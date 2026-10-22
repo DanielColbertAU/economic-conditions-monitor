@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ECM | Economic Conditions Monitor V3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eaf3ff;background:#081321}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:1370px;margin:auto;padding:32px 24px 50px}
+header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.eyebrow{color:#78b4d5;letter-spacing:.15em;font-size:11px;font-weight:800}
+h1{font-size:32px;letter-spacing:-.035em;margin:7px 0}h2{font-size:18px;margin:0 0 6px}
+p{color:#a8bbcf;line-height:1.5;margin:6px 0}
+.status{background:#15293d;border:1px solid #33516b;border-radius:30px;padding:10px 15px;color:#d5e7f5;font-size:12px}
+.sectionhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:28px;flex-wrap:wrap}
+.sectionhead p{font-size:12px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:15px 0 22px}
+.card{background:#102237;border:1px solid #284159;border-radius:17px;padding:22px;min-width:0}
+.metric-title{font-size:13px;color:#c5d9ea;font-weight:700;min-height:32px}
+.kpirow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:8px 0 6px}
+.kpi{font-size:30px;letter-spacing:-.04em;font-weight:800;font-variant-numeric:tabular-nums}
+.unit{color:#a7bacd;font-size:12px}.sub{color:#91a9be;font-size:12px}
+.gauge{position:relative;height:17px;border-radius:99px;margin:20px 0 8px;background:#254258}
+.gauge-track{display:flex;height:100%;border-radius:99px;overflow:hidden}
+.gauge-track>span{height:100%;flex:1}
+.gauge-marker{position:absolute;top:-5px;height:27px;width:5px;background:#fff;border:1px solid #102237;border-radius:5px;box-shadow:0 0 0 2px #091726,0 1px 9px #0008;transform:translateX(-50%)}
+.scale-labels{display:flex;justify-content:space-between;color:#8fa8bd;font-size:10px;font-variant-numeric:tabular-nums}
+.card-note{color:#b6cadb;font-size:12px;line-height:1.45;min-height:36px;margin-top:15px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid #37506a;border-radius:30px;padding:5px 9px;color:#d3e4f0;font-size:11px}
+.chip.good{border-color:#367b6b;color:#7ce0c3}.chip.bad{border-color:#90515c;color:#ff9daa}.chip.neutral{color:#b9cddd}
+.panelgrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:16px}
+.chart-wrap{height:360px;position:relative}.controls{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+select{background:#193149;color:#eaf3ff;border:1px solid #45627d;border-radius:8px;padding:9px 11px;max-width:100%}
+.sources{padding-left:18px;line-height:1.9;font-size:12px;color:#a6bed1}
+a{color:#83d0ff}.foot{font-size:12px;color:#91a9be;margin-top:22px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:#a9bfd0;margin:10px 0}
+.legend span{display:flex;align-items:center;gap:6px}.swatch{width:10px;height:10px;border-radius:3px}
+.warning{color:#ffd28a;font-size:12px}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.panelgrid{grid-template-columns:1fr}}
+@media(max-width:580px){.shell{padding:20px 14px}.grid{grid-template-columns:1fr}h1{font-size:26px}.card{padding:18px}}
+
+.grouphead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:28px 0 12px;flex-wrap:wrap}
+.grouphead h2{margin:0}.grouphead p{font-size:12px;margin:0}
+.info-note{font-size:12px;color:#aac1d4;border-left:3px solid #4b90aa;padding-left:12px;margin:15px 0}
+.card .secondary-stat{font-size:14px;color:#d6e9f6;margin-top:10px;font-weight:700}
+
+.v3-panel{margin-top:24px}.v3-panel h2{font-size:20px}
+.v3-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(290px,1fr);gap:16px}
+.v3-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:14px 0}
+.v3-controls label{font-size:12px;color:#aac1d4;display:flex;flex-direction:column;gap:6px}
+.v3-controls input{background:#193149;color:#eaf3ff;border:1px solid #45627d;border-radius:8px;padding:8px}
+.v3-chart{height:430px;position:relative}
+.v3-table{width:100%;border-collapse:collapse;font-size:12px}
+.v3-table th,.v3-table td{border-bottom:1px solid #2c4760;padding:10px 6px;text-align:right}
+.v3-table th:first-child,.v3-table td:first-child{text-align:left}
+.v3-table th{color:#b5cadb;font-weight:700}.v3-table td{font-variant-numeric:tabular-nums}
+.v3-scroll{overflow-x:auto}.v3-note{border-left:3px solid #d8b35a;padding-left:12px;margin-top:12px}
+.v3-key{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;background:#d8b35a55}
+.v3-small{font-size:11px;color:#94adc2}
+@media(max-width:850px){.v3-grid{grid-template-columns:1fr}.v3-chart{height:350px}}
+</style>
+</head>
+<body><main class="shell">
+<header><div><div class="eyebrow">ECONOMIC CYCLE RESEARCH · V3</div><h1>Economic Conditions Monitor</h1><p>Live conditions, NBER recession chronology back to 1857 and historical indicator research.</p></div><div id="status" class="status">Loading latest snapshot…</div></header>
+<div class="sectionhead"><h2>Economic conditions at a glance</h2><p>Markers show position within labelled reference ranges · Trends are not forecasts</p></div>
+<div class="legend"><span><i class="swatch" style="background:#34bfa2"></i>Favourable / lower stress</span><span><i class="swatch" style="background:#d8b35a"></i>Watch</span><span><i class="swatch" style="background:#dc7281"></i>Elevated concern</span><span>White line = latest observation</span></div>
+<div id="cards"></div>
+<section class="panelgrid"><div class="card"><h2>Historical indicator explorer</h2><p class="sub">Explore source observations. Ranges above are descriptive, not validated recession triggers.</p><div class="controls"><select id="indicator" aria-label="Indicator"></select><select id="window" aria-label="Time window"><option value="60">5 years</option><option value="120">10 years</option><option value="240">20 years</option><option value="0" selected>All history</option></select></div><div class="chart-wrap"><canvas id="history"></canvas></div></div>
+<div class="card"><h2>Data quality & sources</h2><p id="freshness" class="sub">Loading…</p><ul id="sources" class="sources"></ul><p class="sub">Data checked daily at 00:00 UTC. Source publication dates vary. Partial failures retain prior observations and are listed here.</p><p class="warning">This dashboard does not calculate a validated recession probability or composite economic score.</p></div></section>
+
+<section class="v3-panel" id="historical-lab">
+ <div class="sectionhead"><h2>Historical recession analysis lab</h2><p>Compare downturns using the longest available source histories</p></div>
+ <div class="v3-grid">
+  <div class="card">
+   <h2>Cycle comparison chart</h2>
+   <p class="sub">Compare two indicators. Normalised mode sets each series to 100 at its first available observation in the selected period. Grey bands = official US recession months.</p>
+   <div class="v3-controls">
+    <label>Historical event<select id="v3-event">
+     <option value="all">All available history</option>
+     <option value="au1990">Australia 1990–91 recession (approximate)</option>
+     <option value="augfc">Australia during GFC (not an Australian recession)</option>
+    </select></label>
+    <label>Indicator A<select id="v3-a"></select></label>
+    <label>Indicator B<select id="v3-b"></select></label>
+    <label>Display<select id="v3-mode"><option value="normalised">Normalised (start = 100)</option><option value="raw">Raw values (separate axes)</option></select></label>
+   </div>
+   <div class="v3-controls">
+    <label>From<input id="v3-from" type="date"></label>
+    <label>To<input id="v3-to" type="date"></label>
+    <label>Pre-event window<select id="v3-lead"><option value="12">12 months</option><option value="24" selected>24 months</option><option value="36">36 months</option><option value="60">60 months</option></select></label>
+   </div>
+   <div class="v3-chart"><canvas id="v3-chart"></canvas></div>
+   <p id="v3-coverage" class="v3-small"></p>
+  </div>
+  <div class="card">
+   <h2>Event briefing</h2>
+   <p id="v3-event-description" class="sub">Select a recession or economic event.</p>
+   <div id="v3-event-meta" class="chips"></div>
+   <p class="v3-note sub">US shading uses NBER recession months (FRED USREC). Australian episodes are contextual windows, not shaded as NBER recessions. Event dates are selected with hindsight.</p>
+   <h2 style="margin-top:25px">Independent historical sources</h2>
+   <p class="sub"><a href="https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions" target="_blank" rel="noopener">NBER business-cycle chronology</a>: 34 official US recession peak/trough pairs, 1857–2020, included locally as a separate source file.</p>
+   <p class="sub"><a href="https://www.nber.org/research/data/nber-macrohistory-database" target="_blank" rel="noopener">NBER Macrohistory Database</a>: pre-WWI/interwar economic measurements. Individual historical series require verified units, transformations and coverage before being charted.</p>
+   <h2 style="margin-top:25px">Methodology</h2>
+   <p class="sub">Series have different start dates and frequencies. Comparisons use monthly sampling, with the last observation available within each month. Missing history is left blank, never extrapolated.</p>
+   <p class="sub">Historical data are current revised values, <strong>not real-time vintages</strong>. The analysis does not establish what investors knew at the time or prove predictive power.</p>
+   <p class="sub">NBER event chronology is independently sourced; the quantitative series currently come from FRED, which republishes data from multiple originating institutions. Pre-1940 indicator gaps are shown explicitly, not filled with invented proxies. The ICE high-yield spread may have restricted history. The longer-running Moody's Baa–Treasury spread is provided as a distinct credit-stress proxy, not a like-for-like replacement.</p>
+  </div>
+ </div>
+ <div class="card" style="margin-top:16px">
+  <h2>What was visible before the downturn?</h2>
+  <p class="sub">Values at the event start and 3, 6, 12 and 24 months earlier. Each column shows the latest observation on or before the target date. This is an observation-date comparison, not a release-date or vintage backtest.</p>
+  <div class="v3-controls"><label>Compare indicator<select id="v3-table-indicator"></select></label></div>
+  <div class="v3-scroll"><table class="v3-table"><thead><tr><th>Observation</th><th>−24 months</th><th>−12 months</th><th>−6 months</th><th>−3 months</th><th>Event start</th></tr></thead><tbody id="v3-table-body"><tr><td colspan="6">Loading history…</td></tr></tbody></table></div>
+  <p id="v3-table-note" class="v3-small"></p>
+ </div>
+</section>
+<p class="foot">Research tool only · Not investment advice · Historical series may be revised · Range boundaries are interpretive reference points, not investment signals.</p>
+</main>
+<script>
+'use strict';
+let db=null,chart=null;
+const $=id=>document.getElementById(id);
+const num=(v,d=2)=>Number(v).toLocaleString('en-AU',{maximumFractionDigits:d,minimumFractionDigits:d});
+const datefmt=d=>new Date(d+'T00:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const palette={good:'#34bfa2',watch:'#d8b35a',bad:'#dc7281',calm:'#4b90aa'};
+function monthsBack(date,n){const d=new Date(date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-n);return d}
+function pastPoint(points,months){const target=monthsBack(points.at(-1)[0],months);for(let i=points.length-1;i>=0;i--)if(new Date(points[i][0]+'T00:00:00Z')<=target)return points[i];return null}
+function pastYearLow(points){const cutoff=monthsBack(points.at(-1)[0],12);return Math.min(...points.filter(p=>new Date(p[0]+'T00:00:00Z')>=cutoff).map(p=>p[1]))}
+function recentPrevious(points){return points.length>1?points.at(-2):null}
+function signed(x,d=1){return (x>0?'+':'')+num(x,d)}
+function gaugeSpec(key,s){
+  const p=s.observations,last=p.at(-1)[1],p3=pastPoint(p,3),p12=pastPoint(p,12);
+  const delta=p3===null?null:last-p3[1];
+  const yoy=p12&&p12[1]!==0?(last/p12[1]-1)*100:null;
+  if(key==='aus_cli')return {v:last,min:96,max:104,ticks:['96','98','100','102','104'],bands:['bad','watch','good','good'],note:'100 = long-term trend; direction matters more than a small deviation.',trend:delta,threshold:.12,polarity:1,metric:'Index'};
+  if(key==='aus_unemployment'){
+    const low=pastYearLow(p);
+    return {v:last-low,min:0,max:2,ticks:['0','0.5','1','1.5','2+'],bands:['good','watch','bad','bad'],note:'Gauge = rise from the lowest monthly unemployment reading over the past 12 months. Not the formal Sahm Rule.',trend:delta,threshold:.1,polarity:-1,metric:'pp above 12m low',detail:'12m low '+num(low,2)+'%'};
+  }
+  if(key==='aus_employment'){
+    const previous=recentPrevious(p);
+    const change=previous?last-previous[1]:null;
+    return {v:yoy,min:-4,max:6,ticks:['−4%','−1.5%','1%','3.5%','6%'],bands:['bad','watch','good','good'],note:'Headline = month-on-month change in seasonally adjusted employed persons. Gauge = year-on-year employment growth. Data may lag ABS releases.',trend:change,threshold:10000,polarity:1,metric:'% YoY',trendLabel:'Monthly jobs',change:change,annual:yoy};
+  }
+  if(key==='aud_usd')return {v:last,min:.5,max:1.0,ticks:['0.50','0.625','0.75','0.875','1.00'],bands:['calm','calm','calm','calm'],note:'USD per AUD; neutral scale by design. Currency strength or weakness is not inherently positive or negative for Australia.',trend:delta,threshold:.01,polarity:0,metric:'USD per AUD',trendLabel:'3m FX move',trendUnit:'USD'};
+  if(key==='us_curve')return {v:last,min:-2,max:3,ticks:['−2','−1','0','1.5','3'],bands:['bad','watch','good','calm'],note:'Negative = inverted curve. Steepening after inversion can still accompany recession risk.',trend:delta,threshold:.15,polarity:0,metric:'pp'};
+  if(key==='us_unemployment'){const low=pastYearLow(p),gap=last-low;return {v:gap,min:0,max:2,ticks:['0','0.5','1','1.5','2+'],bands:['good','watch','bad','bad'],note:'Gauge = rise from lowest monthly reading in the past year; not the formal Sahm Rule.',trend:delta,threshold:.15,polarity:-1,metric:'pp above 12m low',detail:'12m low '+num(low,1)+'%'};}
+  if(key==='us_credit')return {v:last,min:1,max:9,ticks:['1','3','5','7','9+'],bands:['good','watch','bad','bad'],note:'Wider high-yield spreads suggest increasing credit stress; bands are illustrative.',trend:delta,threshold:.25,polarity:-1,metric:'pp'};
+  if(key==='us_vix')return {v:last,min:0,max:50,ticks:['0','15','25','40','50+'],stops:[0,15,25,40,50],bands:['good','calm','watch','bad'],note:'Higher VIX means higher expected 30-day equity volatility, not certain market declines.',trend:delta,threshold:3,polarity:-1,metric:'index'};
+  if(key==='us_industrial')return {v:yoy,min:-10,max:10,ticks:['−10','−5','0','5','10+'],bands:['bad','watch','good','good'],note:'Gauge = year-on-year industrial production growth, not the raw index level.',trend:yoy,threshold:.5,polarity:1,metric:'% YoY',trendLabel:'Annual growth'};
+  return null;
+}
+function safeText(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderGauge(g){
+  if(g.v===null||!Number.isFinite(g.v))return '<div class="sub">Insufficient history for gauge</div>';
+  const stops=g.stops||[g.min,g.min+(g.max-g.min)/4,g.min+(g.max-g.min)/2,g.min+3*(g.max-g.min)/4,g.max];
+  const segments=g.bands.map((band,i)=>`<span style="background:${palette[band]};flex:${stops[i+1]-stops[i]}"></span>`).join('');
+  const pos=clamp((g.v-g.min)/(g.max-g.min)*100,1,99);
+  return `<div class="gauge" role="img" aria-label="Position ${num(g.v)} on scale from ${g.min} to ${g.max}"><div class="gauge-track">${segments}</div><div class="gauge-marker" style="left:${pos}%"></div></div><div class="scale-labels">${g.ticks.map(t=>`<span>${t}</span>`).join('')}</div>`;
+}
+function trendChip(g){
+  if(g.trend===null||!Number.isFinite(g.trend))return '<span class="chip neutral">Trend unavailable</span>';
+  if(Math.abs(g.trend)<g.threshold)return `<span class="chip neutral">${g.trendLabel||'3m change'}: broadly flat</span>`;
+  const sign=g.trend>0?'+':'−',dir=g.trend>0?'↑':'↓';
+  const positive=g.polarity===0?null:(g.trend*g.polarity>0);
+  const cls=positive===null?'neutral':positive?'good':'bad';
+  const suffix=g.trendUnit|| (g.trendLabel==='Monthly jobs'?' jobs':g.trendLabel==='Annual growth'?'%':' pp/index units');
+  return `<span class="chip ${cls}">${dir} ${g.trendLabel||'3m change'} ${sign}${num(Math.abs(g.trend),g.trendLabel==='Monthly jobs'?0:2)}${suffix}</span>`;
+}
+const sections=[
+  {title:'Australian economy',desc:'Domestic momentum, employment and currency',keys:['aus_cli','aus_unemployment','aus_employment','aud_usd']},
+  {title:'United States economy',desc:'Labour market, industrial activity and yield curve',keys:['us_unemployment','us_industrial','us_curve']},
+  {title:'Global financial conditions',desc:'Credit stress and market volatility',keys:['us_credit','us_vix']}
+];
+function cardFor(key){
+ const s=db.sources[key];if(!s?.observations?.length)return '';
+ const last=s.observations.at(-1),g=gaugeSpec(key,s);if(!g)return '';
+ let value=key==='us_unemployment'||key==='aus_unemployment'?num(last[1],2)+'%':num(last[1],key==='aud_usd'?4:2);
+ let secondary='';
+ if(key==='aus_employment'){
+   value=g.change===null?'N/A':signed(g.change,0);
+   secondary=`<div class="secondary-stat">Annual employment growth: ${g.annual===null?'Unavailable':signed(g.annual,2)+'%'}</div><div class="sub">Total employed: ${num(last[1],0)} people</div>`;
+ }
+ if(key==='aus_unemployment')secondary=`<div class="secondary-stat">${num(g.v,2)} pp above 12m low</div>`;
+ if(key==='us_industrial')secondary=`<div class="secondary-stat">Annual growth: ${g.v===null?'Unavailable':signed(g.v,2)+'%'}</div>`;
+ return `<article class="card"><div class="metric-title">${safeText(s.name)}</div><div class="kpirow"><div class="kpi">${value}</div><div class="unit">${key==='aus_employment'?'jobs / month':safeText(s.unit)}</div></div><div class="sub">Observation: ${datefmt(last[0])}</div>${secondary}<div class="sub" style="margin-top:9px">Gauge: ${safeText(g.metric)}</div>${renderGauge(g)}<div class="chips">${trendChip(g)}${g.detail?`<span class="chip">${safeText(g.detail)}</span>`:''}</div><div class="card-note">${safeText(g.note)}</div></article>`;
+}
+function cards(){
+ $('cards').innerHTML=sections.map(section=>{
+   const cards=section.keys.map(cardFor).filter(Boolean);
+   return `<div class="grouphead"><h2>${section.title}</h2><p>${section.desc}</p></div><section class="grid">${cards.length?cards.join(''):'<article class="card"><p>Waiting for first successful data refresh for this section.</p></article>'}</section>`;
+ }).join('');
+}
+function draw(){
+ if(!db)return;
+ const s=db.sources[$('indicator').value];if(!s||!s.observations?.length)return;
+ let points=s.observations;const months=+$('window').value;
+ if(months){const cutoff=monthsBack(points.at(-1)[0],months);points=points.filter(p=>new Date(p[0]+'T00:00:00Z')>=cutoff)}
+ if(chart)chart.destroy();
+ if(typeof Chart==='undefined'){$('freshness').textContent+=' · Chart library unavailable';return}
+ chart=new Chart($('history'),{type:'line',data:{labels:points.map(p=>p[0]),datasets:[{label:s.name,data:points.map(p=>p[1]),borderColor:'#62c9e9',backgroundColor:'rgba(98,201,233,.09)',pointRadius:0,borderWidth:2,fill:true,tension:.08}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#d1e3f1'}},tooltip:{callbacks:{title:items=>datefmt(items[0].label)}}},scales:{x:{ticks:{color:'#9bb1c5',maxTicksLimit:7},grid:{color:'#21374d'}},y:{ticks:{color:'#9bb1c5'},grid:{color:'#21374d'},title:{display:true,text:s.unit,color:'#9bb1c5'}}}}});
+}
+async function start(){
+ try{
+  const r=await fetch('../data.json?cache='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('No published data snapshot');
+  db=await r.json();const names=Object.entries(db.sources).filter(([,s])=>s.observations?.length);
+  if(!names.length)throw Error('No observations loaded');
+  const updated=new Date(db.updated_at).toLocaleString('en-AU',{timeZone:'UTC'});
+  $('status').textContent='Snapshot: '+updated+' UTC';
+  $('freshness').textContent='Last successful snapshot: '+updated+' UTC';
+  $('indicator').innerHTML=names.map(([k,s])=>`<option value="${safeText(k)}">${safeText(s.name)}</option>`).join('');
+  $('sources').innerHTML=names.map(([,s])=>`<li><a target="_blank" rel="noopener" href="${safeText(s.url)}">${safeText(s.id)}</a> · ${datefmt(s.observations.at(-1)[0])}</li>`).join('')+(Object.keys(db.errors||{}).length?'<li class="warning">Partial fetch failures: '+Object.keys(db.errors).map(safeText).join(', ')+'</li>':'');
+  cards();draw();
+ }catch(e){$('status').textContent='Data unavailable';$('freshness').textContent=e.message;$('cards').innerHTML='<div class="card">Unable to load the published data snapshot. Try again shortly.</div>'}
+}
+$('indicator').addEventListener('change',draw);$('window').addEventListener('change',draw);start();
+</script>
+<script>
+'use strict';
+(function(){
+const $=id=>document.getElementById(id);
+let snapshot=null,historyChart=null;
+const EVENTS={
+ all:{name:'All available history',start:null,end:null,description:'Full source history. Select a specific event to compare pre-downturn behaviour.'},
+ '1980':{name:'1980 US recession',start:'1980-01-01',end:'1980-07-01',description:'Short US recession amid inflation and monetary tightening.',us:true},
+ '1981':{name:'1981–82 US recession',start:'1981-07-01',end:'1982-11-01',description:'Severe US recession following tight monetary policy.',us:true},
+ '1990':{name:'1990–91 US recession',start:'1990-07-01',end:'1991-03-01',description:'US downturn associated with credit stress and the Gulf War oil shock.',us:true},
+ '2001':{name:'2001 US recession',start:'2001-03-01',end:'2001-11-01',description:'US recession following the technology investment boom and bust.',us:true},
+ '2007':{name:'Global financial crisis / US recession',start:'2007-12-01',end:'2009-06-01',description:'US recession during the financial crisis. Australia did not experience the same official recession chronology.',us:true},
+ '2020':{name:'2020 US COVID recession',start:'2020-02-01',end:'2020-04-01',description:'Abrupt pandemic shock; atypical recession dynamics.',us:true},
+ au1990:{name:'Australia early-1990s recession',start:'1990-09-01',end:'1991-12-01',description:'Approximate Australian recession study window; not an official monthly recession classification.',au:true},
+ augfc:{name:'Australia during the global financial crisis',start:'2008-01-01',end:'2009-12-01',description:'Australian GFC stress window, not labelled as an Australian recession.',au:true}
+};
+const keys=['aus_cli','aus_unemployment','aus_employment','aud_usd','us_curve','us_unemployment','us_industrial','us_credit','us_credit_long','us_vix'];
+const months=(s,n)=>{const d=new Date(s+'T00:00:00Z');const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);d.setUTCDate(Math.min(day,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));return d.toISOString().slice(0,10)};
+const monthkey=s=>s.slice(0,7);
+const pretty=v=>Number(v).toLocaleString('en-AU',{maximumFractionDigits:3});
+const safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function series(k){return snapshot?.sources?.[k]?.observations||[]}
+function monthMap(k){
+ const m=new Map();
+ for(const [d,v] of series(k))if(Number.isFinite(v))m.set(monthkey(d),{date:d,value:v});
+ return m;
+}
+function rangeMonths(a,b){
+ const result=[];let cur=a.slice(0,7)+'-01',last=b.slice(0,7)+'-01';
+ for(let i=0;cur<=last&&i<2600;i++,cur=months(cur,1))result.push(cur.slice(0,7));
+ return result;
+}
+function lastBefore(k,target){
+ const p=series(k);let lo=0,hi=p.length;
+ while(lo<hi){const mid=(lo+hi)>>1;if(p[mid][0]<=target)lo=mid+1;else hi=mid}
+ if(lo===0)return null;
+ const item=p[lo-1],gap=(Date.parse(target+'T00:00:00Z')-Date.parse(item[0]+'T00:00:00Z'))/86400000;
+ // Avoid silently treating stale observations as contemporaneous.
+ if(gap>45)return null;
+ return item;
+}
+const recessionShade={
+ id:'recessionShade',
+ beforeDatasetsDraw(chart){
+  if(!snapshot?.sources?.us_recession)return;
+  const labels=chart.data.labels,rec=monthMap('us_recession');
+  const ctx=chart.ctx,x=chart.scales.x,y=chart.chartArea;
+  ctx.save();ctx.fillStyle='rgba(158,168,188,0.16)';
+  labels.forEach((m,i)=>{
+   if(rec.get(m)?.value!==1)return;
+   const mid=x.getPixelForValue(i);
+   const left=i? (x.getPixelForValue(i-1)+mid)/2:mid;
+   const right=i<labels.length-1?(mid+x.getPixelForValue(i+1))/2:mid;
+   ctx.fillRect(left,y.top,Math.max(1,right-left),y.bottom-y.top);
+  });
+  ctx.restore();
+ }
+};
+function pickWindow(){
+ const e=EVENTS[$('v3-event').value];
+ if(e.start){$('v3-from').value=months(e.start,-Number($('v3-lead').value));$('v3-to').value=months(e.end,12)}
+ else{
+  const a=series($('v3-a').value),b=series($('v3-b').value);
+  const starts=[a[0]?.[0],b[0]?.[0]].filter(Boolean),ends=[a.at(-1)?.[0],b.at(-1)?.[0]].filter(Boolean);
+  $('v3-from').value=starts.sort()[0]||'1980-01-01';$('v3-to').value=ends.sort().at(-1)||'2026-01-01';
+ }
+ drawHistory();
+}
+function drawHistory(){
+ if(!snapshot)return;
+ const a=$('v3-a').value,b=$('v3-b').value;
+ const start=$('v3-from').value,end=$('v3-to').value;
+ if(!start||!end||start>end){$('v3-coverage').textContent='Choose a valid date range.';return}
+ const labels=rangeMonths(start,end);
+ const mode=$('v3-mode').value;
+ const palette=['#62c9e9','#e7b969'];
+ const info=[];
+ const datasets=[a,b].map((k,i)=>{
+  if(k==='none')return null;
+  const map=monthMap(k),raw=labels.map(m=>map.get(m)?.value??null);
+  const baseline=raw.find(v=>v!==null);
+  const normalized=mode==='normalised'&&baseline!==undefined&&baseline!==0;
+  const data=normalized?raw.map(v=>v===null?null:v/baseline*100):raw;
+  info.push(`${snapshot.sources[k].name}: ${raw.filter(v=>v!==null).length} of ${labels.length} months, ${series(k)[0]?.[0]||'N/A'} to ${series(k).at(-1)?.[0]||'N/A'}`);
+  return {label:snapshot.sources[k].name,data,borderColor:palette[i],backgroundColor:palette[i],borderWidth:2,pointRadius:0,spanGaps:false,yAxisID:mode==='raw'&&i===1?'y2':'y',tension:0};
+ }).filter(Boolean);
+ if(historyChart)historyChart.destroy();
+ if(typeof Chart==='undefined'){$('v3-coverage').textContent='Chart library unavailable';return}
+ historyChart=new Chart($('v3-chart'),{type:'line',data:{labels,datasets},plugins:[recessionShade],options:{
+  responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{labels:{color:'#d1e3f1'}},tooltip:{callbacks:{title:items=>items[0]?.label||''}}},
+  scales:{
+   x:{ticks:{color:'#9bb1c5',maxTicksLimit:12,maxRotation:0,callback:function(v){return this.getLabelForValue(v)}},grid:{color:'#21374d'}},
+   y:{position:'left',ticks:{color:'#9bb1c5'},grid:{color:'#21374d'},title:{display:true,text:mode==='normalised'?'Index: first available = 100':snapshot.sources[a]?.unit||'',color:'#9bb1c5'}},
+   y2:{display:mode==='raw'&&b!=='none',position:'right',ticks:{color:'#e7b969'},grid:{drawOnChartArea:false},title:{display:mode==='raw'&&b!=='none',text:snapshot.sources[b]?.unit||'',color:'#e7b969'}}
+  }
+ }});
+ $('v3-coverage').textContent=info.join(' | ')+(snapshot.sources.us_recession?' | Shading: NBER US recession months':' | Recession shading pending refresh');
+ renderTable();
+}
+function renderTable(){
+ const key=$('v3-table-indicator').value,event=EVENTS[$('v3-event').value];
+ $('v3-event-description').textContent=event.description;
+ $('v3-event-meta').innerHTML=event.start?`<span class="chip">${safe(event.name)}</span><span class="chip">Start ${event.start}</span><span class="chip">End ${event.end}</span>`:'<span class="chip">Select an event for the lead-time table</span>';
+ if(!event.start){$('v3-table-body').innerHTML='<tr><td colspan="6">Select a historical event to see pre-event observations.</td></tr>';$('v3-table-note').textContent='';return}
+ const offsets=[-24,-12,-6,-3,0];
+ const items=offsets.map(n=>lastBefore(key,months(event.start,n)));
+ $('v3-table-body').innerHTML=`<tr><td>${safe(snapshot.sources[key]?.name||key)}</td>${items.map(v=>`<td>${v?pretty(v[1]):'—'}</td>`).join('')}</tr><tr><td>Observation date</td>${items.map(v=>`<td>${v?v[0]:'—'}</td>`).join('')}</tr>`;
+ $('v3-table-note').textContent='Units: '+(snapshot.sources[key]?.unit||'')+'. A dash means no sufficiently recent observation within 45 days of the comparison date. Published release lags and subsequent revisions are not represented.';
+}
+async function init(){
+ try{
+  const r=await fetch('../data.json?v3='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw Error('Historical snapshot unavailable');
+  snapshot=await r.json();
+  try {
+   const nr=await fetch('recessions.json?version=3',{cache:'no-store'});
+   if(!nr.ok)throw Error('NBER chronology unavailable');
+   const chronology=await nr.json();
+   for(const rec of chronology.recessions){
+    const id='nber-'+rec.peak.slice(0,7);
+    EVENTS[id]={name:rec.name,start:months(rec.peak,1),end:rec.trough,description:'NBER-dated US recession. Peak month: '+rec.peak.slice(0,7)+'. Contraction begins the following month; trough month: '+rec.trough.slice(0,7)+'.',us:true};
+    const option=document.createElement('option');option.value=id;option.textContent=rec.name+' ('+rec.peak.slice(0,7)+' to '+rec.trough.slice(0,7)+')';
+    $('v3-event').appendChild(option);
+   }
+  }catch(err){$('v3-coverage').textContent='NBER chronology unavailable: '+err.message}
+  const opts=keys.filter(k=>series(k).length).map(k=>`<option value="${k}">${safe(snapshot.sources[k].name)}</option>`).join('');
+  ['v3-a','v3-b','v3-table-indicator'].forEach(id=>$(id).innerHTML=opts);
+  $('v3-a').value='us_curve';$('v3-b').value='us_unemployment';$('v3-table-indicator').value='us_curve';
+  $('v3-b').insertAdjacentHTML('afterbegin','<option value="none">No second indicator</option>');
+  const binds=['v3-event','v3-lead'];
+  binds.forEach(id=>$(id).addEventListener('change',pickWindow));
+  ['v3-a','v3-b','v3-mode','v3-from','v3-to'].forEach(id=>$(id).addEventListener('change',drawHistory));
+  $('v3-table-indicator').addEventListener('change',renderTable);
+  $('v3-event').value='nber-2007-12';pickWindow();
+ }catch(err){$('v3-coverage').textContent='Historical data could not load: '+err.message}
+}
+init();
+})();
+</script>
+</body></html>
