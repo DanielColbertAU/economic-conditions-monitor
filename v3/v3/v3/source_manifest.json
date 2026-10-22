@@ -1,0 +1,30 @@
+{
+  "sources": [
+    {
+      "id": "nber_cycles",
+      "provider": "National Bureau of Economic Research",
+      "type": "event chronology",
+      "coverage": "1857\u20132020",
+      "file": "recessions.json",
+      "status": "integrated",
+      "url": "https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions"
+    },
+    {
+      "id": "fred",
+      "provider": "Federal Reserve Bank of St. Louis",
+      "type": "multi-origin time series distribution",
+      "coverage": "series-specific",
+      "file": "../data.json",
+      "status": "integrated",
+      "url": "https://fred.stlouisfed.org/"
+    },
+    {
+      "id": "nber_macrohistory",
+      "provider": "National Bureau of Economic Research",
+      "type": "historical quantitative series",
+      "coverage": "pre-WWI/interwar series-specific",
+      "status": "candidate - not yet integrated",
+      "url": "https://www.nber.org/research/data/nber-macrohistory-database"
+    }
+  ]
+}
