@@ -16,6 +16,8 @@ SERIES = {
     "aud_usd": ("DEXUSAL", "AUD/USD exchange rate", "USD per AUD"),
     "us_curve": ("T10Y2Y", "US 10Y minus 2Y Treasury yield", "percentage points"),
     "us_unemployment": ("UNRATE", "US unemployment rate", "percent"),
+    "us_credit_long": ("BAA10Y", "US Moody's Baa minus 10Y Treasury spread", "percentage points"),
+    "us_recession": ("USREC", "NBER US recession indicator (monthly)", "0 or 1"),
     "us_credit": ("BAMLH0A0HYM2", "US high-yield option-adjusted spread", "percentage points"),
     "us_vix": ("VIXCLS", "CBOE volatility index", "index"),
     "us_industrial": ("INDPRO", "US industrial production", "index"),
@@ -34,7 +36,7 @@ def fetch_series(series_id, api_key):
         "series_id": series_id,
         "api_key": api_key,
         "file_type": "json",
-        "observation_start": "1980-01-01",
+        "observation_start": "1850-01-01",
     })
     url = "https://api.stlouisfed.org/fred/series/observations?" + params
     last_error = "unknown error"
@@ -43,7 +45,7 @@ def fetch_series(series_id, api_key):
         try:
             request = urllib.request.Request(
                 url,
-                headers={"User-Agent": "ECM-Dashboard/2.1", "Accept": "application/json"},
+                headers={"User-Agent": "ECM-Dashboard/3.0", "Accept": "application/json"},
             )
             with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
                 content_type = response.headers.get("Content-Type", "").lower()
