@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ECM | Economic Conditions Monitor V2</title>
+<title>ECM | Economic Conditions Monitor V2.2</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eaf3ff;background:#081321}
@@ -39,13 +39,18 @@ a{color:#83d0ff}.foot{font-size:12px;color:#91a9be;margin-top:22px}
 @media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:750px){.panelgrid{grid-template-columns:1fr}}
 @media(max-width:580px){.shell{padding:20px 14px}.grid{grid-template-columns:1fr}h1{font-size:26px}.card{padding:18px}}
+
+.grouphead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:28px 0 12px;flex-wrap:wrap}
+.grouphead h2{margin:0}.grouphead p{font-size:12px;margin:0}
+.info-note{font-size:12px;color:#aac1d4;border-left:3px solid #4b90aa;padding-left:12px;margin:15px 0}
+.card .secondary-stat{font-size:14px;color:#d6e9f6;margin-top:10px;font-weight:700}
 </style>
 </head>
 <body><main class="shell">
-<header><div><div class="eyebrow">ECONOMIC CYCLE RESEARCH · V2</div><h1>Economic Conditions Monitor</h1><p>Australia-focused cycle indicators and global financial conditions.</p></div><div id="status" class="status">Loading latest snapshot…</div></header>
+<header><div><div class="eyebrow">ECONOMIC CYCLE RESEARCH · V2.2</div><h1>Economic Conditions Monitor</h1><p>Australia-focused cycle indicators and global financial conditions.</p></div><div id="status" class="status">Loading latest snapshot…</div></header>
 <div class="sectionhead"><h2>Economic conditions at a glance</h2><p>Markers show position within labelled reference ranges · Trends are not forecasts</p></div>
 <div class="legend"><span><i class="swatch" style="background:#34bfa2"></i>Favourable / lower stress</span><span><i class="swatch" style="background:#d8b35a"></i>Watch</span><span><i class="swatch" style="background:#dc7281"></i>Elevated concern</span><span>White line = latest observation</span></div>
-<section class="grid" id="cards"></section>
+<div id="cards"></div>
 <section class="panelgrid"><div class="card"><h2>Historical indicator explorer</h2><p class="sub">Explore source observations. Ranges above are descriptive, not validated recession triggers.</p><div class="controls"><select id="indicator" aria-label="Indicator"></select><select id="window" aria-label="Time window"><option value="60">5 years</option><option value="120">10 years</option><option value="240">20 years</option><option value="0" selected>All history</option></select></div><div class="chart-wrap"><canvas id="history"></canvas></div></div>
 <div class="card"><h2>Data quality & sources</h2><p id="freshness" class="sub">Loading…</p><ul id="sources" class="sources"></ul><p class="sub">Data checked daily at 00:00 UTC. Source publication dates vary. Partial failures retain prior observations and are listed here.</p><p class="warning">This dashboard does not calculate a validated recession probability or composite economic score.</p></div></section>
 <p class="foot">Research tool only · Not investment advice · Historical series may be revised · Range boundaries are interpretive reference points, not investment signals.</p>
@@ -61,11 +66,23 @@ const palette={good:'#34bfa2',watch:'#d8b35a',bad:'#dc7281',calm:'#4b90aa'};
 function monthsBack(date,n){const d=new Date(date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-n);return d}
 function pastPoint(points,months){const target=monthsBack(points.at(-1)[0],months);for(let i=points.length-1;i>=0;i--)if(new Date(points[i][0]+'T00:00:00Z')<=target)return points[i];return null}
 function pastYearLow(points){const cutoff=monthsBack(points.at(-1)[0],12);return Math.min(...points.filter(p=>new Date(p[0]+'T00:00:00Z')>=cutoff).map(p=>p[1]))}
+function recentPrevious(points){return points.length>1?points.at(-2):null}
+function signed(x,d=1){return (x>0?'+':'')+num(x,d)}
 function gaugeSpec(key,s){
   const p=s.observations,last=p.at(-1)[1],p3=pastPoint(p,3),p12=pastPoint(p,12);
   const delta=p3===null?null:last-p3[1];
   const yoy=p12&&p12[1]!==0?(last/p12[1]-1)*100:null;
   if(key==='aus_cli')return {v:last,min:96,max:104,ticks:['96','98','100','102','104'],bands:['bad','watch','good','good'],note:'100 = long-term trend; direction matters more than a small deviation.',trend:delta,threshold:.12,polarity:1,metric:'Index'};
+  if(key==='aus_unemployment'){
+    const low=pastYearLow(p);
+    return {v:last-low,min:0,max:2,ticks:['0','0.5','1','1.5','2+'],bands:['good','watch','bad','bad'],note:'Gauge = rise from the lowest monthly unemployment reading over the past 12 months. Not the formal Sahm Rule.',trend:delta,threshold:.1,polarity:-1,metric:'pp above 12m low',detail:'12m low '+num(low,2)+'%'};
+  }
+  if(key==='aus_employment'){
+    const previous=recentPrevious(p);
+    const change=previous?last-previous[1]:null;
+    return {v:yoy,min:-4,max:6,ticks:['−4%','−1.5%','1%','3.5%','6%'],bands:['bad','watch','good','good'],note:'Headline = month-on-month change in seasonally adjusted employed persons. Gauge = year-on-year employment growth. Data may lag ABS releases.',trend:change,threshold:10000,polarity:1,metric:'% YoY',trendLabel:'Monthly jobs',change:change,annual:yoy};
+  }
+  if(key==='aud_usd')return {v:last,min:.5,max:1.0,ticks:['0.50','0.625','0.75','0.875','1.00'],bands:['calm','calm','calm','calm'],note:'USD per AUD; neutral scale by design. Currency strength or weakness is not inherently positive or negative for Australia.',trend:delta,threshold:.01,polarity:0,metric:'USD per AUD',trendLabel:'3m FX move',trendUnit:'USD'};
   if(key==='us_curve')return {v:last,min:-2,max:3,ticks:['−2','−1','0','1.5','3'],bands:['bad','watch','good','calm'],note:'Negative = inverted curve. Steepening after inversion can still accompany recession risk.',trend:delta,threshold:.15,polarity:0,metric:'pp'};
   if(key==='us_unemployment'){const low=pastYearLow(p),gap=last-low;return {v:gap,min:0,max:2,ticks:['0','0.5','1','1.5','2+'],bands:['good','watch','bad','bad'],note:'Gauge = rise from lowest monthly reading in the past year; not the formal Sahm Rule.',trend:delta,threshold:.15,polarity:-1,metric:'pp above 12m low',detail:'12m low '+num(low,1)+'%'};}
   if(key==='us_credit')return {v:last,min:1,max:9,ticks:['1','3','5','7','9+'],bands:['good','watch','bad','bad'],note:'Wider high-yield spreads suggest increasing credit stress; bands are illustrative.',trend:delta,threshold:.25,polarity:-1,metric:'pp'};
@@ -87,17 +104,31 @@ function trendChip(g){
   const sign=g.trend>0?'+':'−',dir=g.trend>0?'↑':'↓';
   const positive=g.polarity===0?null:(g.trend*g.polarity>0);
   const cls=positive===null?'neutral':positive?'good':'bad';
-  return `<span class="chip ${cls}">${dir} ${g.trendLabel||'3m change'} ${sign}${num(Math.abs(g.trend))}${g.trendLabel?'%':' pp/index units'}</span>`;
+  const suffix=g.trendUnit|| (g.trendLabel==='Monthly jobs'?' jobs':g.trendLabel==='Annual growth'?'%':' pp/index units');
+  return `<span class="chip ${cls}">${dir} ${g.trendLabel||'3m change'} ${sign}${num(Math.abs(g.trend),g.trendLabel==='Monthly jobs'?0:2)}${suffix}</span>`;
+}
+const sections=[
+  {title:'Australian economy',desc:'Domestic momentum, employment and currency',keys:['aus_cli','aus_unemployment','aus_employment','aud_usd']},
+  {title:'United States economy',desc:'Labour market, industrial activity and yield curve',keys:['us_unemployment','us_industrial','us_curve']},
+  {title:'Global financial conditions',desc:'Credit stress and market volatility',keys:['us_credit','us_vix']}
+];
+function cardFor(key){
+ const s=db.sources[key];if(!s?.observations?.length)return '';
+ const last=s.observations.at(-1),g=gaugeSpec(key,s);if(!g)return '';
+ let value=key==='us_unemployment'||key==='aus_unemployment'?num(last[1],2)+'%':num(last[1],key==='aud_usd'?4:2);
+ let secondary='';
+ if(key==='aus_employment'){
+   value=g.change===null?'N/A':signed(g.change,0);
+   secondary=`<div class="secondary-stat">Annual employment growth: ${g.annual===null?'Unavailable':signed(g.annual,2)+'%'}</div><div class="sub">Total employed: ${num(last[1],0)} people</div>`;
+ }
+ if(key==='aus_unemployment')secondary=`<div class="secondary-stat">${num(g.v,2)} pp above 12m low</div>`;
+ if(key==='us_industrial')secondary=`<div class="secondary-stat">Annual growth: ${g.v===null?'Unavailable':signed(g.v,2)+'%'}</div>`;
+ return `<article class="card"><div class="metric-title">${safeText(s.name)}</div><div class="kpirow"><div class="kpi">${value}</div><div class="unit">${key==='aus_employment'?'jobs / month':safeText(s.unit)}</div></div><div class="sub">Observation: ${datefmt(last[0])}</div>${secondary}<div class="sub" style="margin-top:9px">Gauge: ${safeText(g.metric)}</div>${renderGauge(g)}<div class="chips">${trendChip(g)}${g.detail?`<span class="chip">${safeText(g.detail)}</span>`:''}</div><div class="card-note">${safeText(g.note)}</div></article>`;
 }
 function cards(){
- const names=Object.entries(db.sources);
- $('cards').innerHTML=names.map(([key,s])=>{
-   if(!s.observations?.length)return '';
-   const last=s.observations.at(-1),g=gaugeSpec(key,s);
-   if(!g)return '';
-   const value=key==='us_unemployment'?num(last[1],1)+'%':key==='us_industrial'?num(last[1]):num(last[1]);
-   const gaugeValue=key==='us_industrial'?(g.v===null?'N/A':(g.v>0?'+':'')+num(g.v)+'% YoY'):key==='us_unemployment'?num(g.v,2)+' pp above low':null;
-   return `<article class="card"><div class="metric-title">${safeText(s.name)}</div><div class="kpirow"><div class="kpi">${value}</div><div class="unit">${safeText(s.unit)}</div></div><div class="sub">Observation: ${datefmt(last[0])}</div><div class="sub" style="margin-top:9px">${gaugeValue?'<strong>'+gaugeValue+'</strong> · ':''}Gauge: ${safeText(g.metric)}</div>${renderGauge(g)}<div class="chips">${trendChip(g)}${g.detail?`<span class="chip">${safeText(g.detail)}</span>`:''}</div><div class="card-note">${safeText(g.note)}</div></article>`;
+ $('cards').innerHTML=sections.map(section=>{
+   const cards=section.keys.map(cardFor).filter(Boolean);
+   return `<div class="grouphead"><h2>${section.title}</h2><p>${section.desc}</p></div><section class="grid">${cards.length?cards.join(''):'<article class="card"><p>Waiting for first successful data refresh for this section.</p></article>'}</section>`;
  }).join('');
 }
 function draw(){
