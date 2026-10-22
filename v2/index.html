@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ECM | Economic Conditions Monitor V2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eaf3ff;background:#081321}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:1370px;margin:auto;padding:32px 24px 50px}
+header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.eyebrow{color:#78b4d5;letter-spacing:.15em;font-size:11px;font-weight:800}
+h1{font-size:32px;letter-spacing:-.035em;margin:7px 0}h2{font-size:18px;margin:0 0 6px}
+p{color:#a8bbcf;line-height:1.5;margin:6px 0}
+.status{background:#15293d;border:1px solid #33516b;border-radius:30px;padding:10px 15px;color:#d5e7f5;font-size:12px}
+.sectionhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:28px;flex-wrap:wrap}
+.sectionhead p{font-size:12px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:15px 0 22px}
+.card{background:#102237;border:1px solid #284159;border-radius:17px;padding:22px;min-width:0}
+.metric-title{font-size:13px;color:#c5d9ea;font-weight:700;min-height:32px}
+.kpirow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:8px 0 6px}
+.kpi{font-size:30px;letter-spacing:-.04em;font-weight:800;font-variant-numeric:tabular-nums}
+.unit{color:#a7bacd;font-size:12px}.sub{color:#91a9be;font-size:12px}
+.gauge{position:relative;height:17px;border-radius:99px;margin:20px 0 8px;background:#254258}
+.gauge-track{display:flex;height:100%;border-radius:99px;overflow:hidden}
+.gauge-track>span{height:100%;flex:1}
+.gauge-marker{position:absolute;top:-5px;height:27px;width:5px;background:#fff;border:1px solid #102237;border-radius:5px;box-shadow:0 0 0 2px #091726,0 1px 9px #0008;transform:translateX(-50%)}
+.scale-labels{display:flex;justify-content:space-between;color:#8fa8bd;font-size:10px;font-variant-numeric:tabular-nums}
+.card-note{color:#b6cadb;font-size:12px;line-height:1.45;min-height:36px;margin-top:15px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid #37506a;border-radius:30px;padding:5px 9px;color:#d3e4f0;font-size:11px}
+.chip.good{border-color:#367b6b;color:#7ce0c3}.chip.bad{border-color:#90515c;color:#ff9daa}.chip.neutral{color:#b9cddd}
+.panelgrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:16px}
+.chart-wrap{height:360px;position:relative}.controls{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+select{background:#193149;color:#eaf3ff;border:1px solid #45627d;border-radius:8px;padding:9px 11px;max-width:100%}
+.sources{padding-left:18px;line-height:1.9;font-size:12px;color:#a6bed1}
+a{color:#83d0ff}.foot{font-size:12px;color:#91a9be;margin-top:22px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:#a9bfd0;margin:10px 0}
+.legend span{display:flex;align-items:center;gap:6px}.swatch{width:10px;height:10px;border-radius:3px}
+.warning{color:#ffd28a;font-size:12px}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.panelgrid{grid-template-columns:1fr}}
+@media(max-width:580px){.shell{padding:20px 14px}.grid{grid-template-columns:1fr}h1{font-size:26px}.card{padding:18px}}
+</style>
+</head>
+<body><main class="shell">
+<header><div><div class="eyebrow">ECONOMIC CYCLE RESEARCH · V2</div><h1>Economic Conditions Monitor</h1><p>Australia-focused cycle indicators and global financial conditions.</p></div><div id="status" class="status">Loading latest snapshot…</div></header>
+<div class="sectionhead"><h2>Economic conditions at a glance</h2><p>Markers show position within labelled reference ranges · Trends are not forecasts</p></div>
+<div class="legend"><span><i class="swatch" style="background:#34bfa2"></i>Favourable / lower stress</span><span><i class="swatch" style="background:#d8b35a"></i>Watch</span><span><i class="swatch" style="background:#dc7281"></i>Elevated concern</span><span>White line = latest observation</span></div>
+<section class="grid" id="cards"></section>
+<section class="panelgrid"><div class="card"><h2>Historical indicator explorer</h2><p class="sub">Explore source observations. Ranges above are descriptive, not validated recession triggers.</p><div class="controls"><select id="indicator" aria-label="Indicator"></select><select id="window" aria-label="Time window"><option value="60">5 years</option><option value="120">10 years</option><option value="240">20 years</option><option value="0" selected>All history</option></select></div><div class="chart-wrap"><canvas id="history"></canvas></div></div>
+<div class="card"><h2>Data quality & sources</h2><p id="freshness" class="sub">Loading…</p><ul id="sources" class="sources"></ul><p class="sub">Data checked daily at 00:00 UTC. Source publication dates vary. Partial failures retain prior observations and are listed here.</p><p class="warning">This dashboard does not calculate a validated recession probability or composite economic score.</p></div></section>
+<p class="foot">Research tool only · Not investment advice · Historical series may be revised · Range boundaries are interpretive reference points, not investment signals.</p>
+</main>
+<script>
+'use strict';
+let db=null,chart=null;
+const $=id=>document.getElementById(id);
+const num=(v,d=2)=>Number(v).toLocaleString('en-AU',{maximumFractionDigits:d,minimumFractionDigits:d});
+const datefmt=d=>new Date(d+'T00:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const palette={good:'#34bfa2',watch:'#d8b35a',bad:'#dc7281',calm:'#4b90aa'};
+function monthsBack(date,n){const d=new Date(date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-n);return d}
+function pastPoint(points,months){const target=monthsBack(points.at(-1)[0],months);for(let i=points.length-1;i>=0;i--)if(new Date(points[i][0]+'T00:00:00Z')<=target)return points[i];return null}
+function pastYearLow(points){const cutoff=monthsBack(points.at(-1)[0],12);return Math.min(...points.filter(p=>new Date(p[0]+'T00:00:00Z')>=cutoff).map(p=>p[1]))}
+function gaugeSpec(key,s){
+  const p=s.observations,last=p.at(-1)[1],p3=pastPoint(p,3),p12=pastPoint(p,12);
+  const delta=p3===null?null:last-p3[1];
+  const yoy=p12&&p12[1]!==0?(last/p12[1]-1)*100:null;
+  if(key==='aus_cli')return {v:last,min:96,max:104,ticks:['96','98','100','102','104'],bands:['bad','watch','good','good'],note:'100 = long-term trend; direction matters more than a small deviation.',trend:delta,threshold:.12,polarity:1,metric:'Index'};
+  if(key==='us_curve')return {v:last,min:-2,max:3,ticks:['−2','−1','0','1.5','3'],bands:['bad','watch','good','calm'],note:'Negative = inverted curve. Steepening after inversion can still accompany recession risk.',trend:delta,threshold:.15,polarity:0,metric:'pp'};
+  if(key==='us_unemployment'){const low=pastYearLow(p),gap=last-low;return {v:gap,min:0,max:2,ticks:['0','0.5','1','1.5','2+'],bands:['good','watch','bad','bad'],note:'Gauge = rise from lowest monthly reading in the past year; not the formal Sahm Rule.',trend:delta,threshold:.15,polarity:-1,metric:'pp above 12m low',detail:'12m low '+num(low,1)+'%'};}
+  if(key==='us_credit')return {v:last,min:1,max:9,ticks:['1','3','5','7','9+'],bands:['good','watch','bad','bad'],note:'Wider high-yield spreads suggest increasing credit stress; bands are illustrative.',trend:delta,threshold:.25,polarity:-1,metric:'pp'};
+  if(key==='us_vix')return {v:last,min:0,max:50,ticks:['0','15','25','40','50+'],stops:[0,15,25,40,50],bands:['good','calm','watch','bad'],note:'Higher VIX means higher expected 30-day equity volatility, not certain market declines.',trend:delta,threshold:3,polarity:-1,metric:'index'};
+  if(key==='us_industrial')return {v:yoy,min:-10,max:10,ticks:['−10','−5','0','5','10+'],bands:['bad','watch','good','good'],note:'Gauge = year-on-year industrial production growth, not the raw index level.',trend:yoy,threshold:.5,polarity:1,metric:'% YoY',trendLabel:'Annual growth'};
+  return null;
+}
+function safeText(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderGauge(g){
+  if(g.v===null||!Number.isFinite(g.v))return '<div class="sub">Insufficient history for gauge</div>';
+  const stops=g.stops||[g.min,g.min+(g.max-g.min)/4,g.min+(g.max-g.min)/2,g.min+3*(g.max-g.min)/4,g.max];
+  const segments=g.bands.map((band,i)=>`<span style="background:${palette[band]};flex:${stops[i+1]-stops[i]}"></span>`).join('');
+  const pos=clamp((g.v-g.min)/(g.max-g.min)*100,1,99);
+  return `<div class="gauge" role="img" aria-label="Position ${num(g.v)} on scale from ${g.min} to ${g.max}"><div class="gauge-track">${segments}</div><div class="gauge-marker" style="left:${pos}%"></div></div><div class="scale-labels">${g.ticks.map(t=>`<span>${t}</span>`).join('')}</div>`;
+}
+function trendChip(g){
+  if(g.trend===null||!Number.isFinite(g.trend))return '<span class="chip neutral">Trend unavailable</span>';
+  if(Math.abs(g.trend)<g.threshold)return `<span class="chip neutral">${g.trendLabel||'3m change'}: broadly flat</span>`;
+  const sign=g.trend>0?'+':'−',dir=g.trend>0?'↑':'↓';
+  const positive=g.polarity===0?null:(g.trend*g.polarity>0);
+  const cls=positive===null?'neutral':positive?'good':'bad';
+  return `<span class="chip ${cls}">${dir} ${g.trendLabel||'3m change'} ${sign}${num(Math.abs(g.trend))}${g.trendLabel?'%':' pp/index units'}</span>`;
+}
+function cards(){
+ const names=Object.entries(db.sources);
+ $('cards').innerHTML=names.map(([key,s])=>{
+   if(!s.observations?.length)return '';
+   const last=s.observations.at(-1),g=gaugeSpec(key,s);
+   if(!g)return '';
+   const value=key==='us_unemployment'?num(last[1],1)+'%':key==='us_industrial'?num(last[1]):num(last[1]);
+   const gaugeValue=key==='us_industrial'?(g.v===null?'N/A':(g.v>0?'+':'')+num(g.v)+'% YoY'):key==='us_unemployment'?num(g.v,2)+' pp above low':null;
+   return `<article class="card"><div class="metric-title">${safeText(s.name)}</div><div class="kpirow"><div class="kpi">${value}</div><div class="unit">${safeText(s.unit)}</div></div><div class="sub">Observation: ${datefmt(last[0])}</div><div class="sub" style="margin-top:9px">${gaugeValue?'<strong>'+gaugeValue+'</strong> · ':''}Gauge: ${safeText(g.metric)}</div>${renderGauge(g)}<div class="chips">${trendChip(g)}${g.detail?`<span class="chip">${safeText(g.detail)}</span>`:''}</div><div class="card-note">${safeText(g.note)}</div></article>`;
+ }).join('');
+}
+function draw(){
+ if(!db)return;
+ const s=db.sources[$('indicator').value];if(!s||!s.observations?.length)return;
+ let points=s.observations;const months=+$('window').value;
+ if(months){const cutoff=monthsBack(points.at(-1)[0],months);points=points.filter(p=>new Date(p[0]+'T00:00:00Z')>=cutoff)}
+ if(chart)chart.destroy();
+ if(typeof Chart==='undefined'){$('freshness').textContent+=' · Chart library unavailable';return}
+ chart=new Chart($('history'),{type:'line',data:{labels:points.map(p=>p[0]),datasets:[{label:s.name,data:points.map(p=>p[1]),borderColor:'#62c9e9',backgroundColor:'rgba(98,201,233,.09)',pointRadius:0,borderWidth:2,fill:true,tension:.08}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#d1e3f1'}},tooltip:{callbacks:{title:items=>datefmt(items[0].label)}}},scales:{x:{ticks:{color:'#9bb1c5',maxTicksLimit:7},grid:{color:'#21374d'}},y:{ticks:{color:'#9bb1c5'},grid:{color:'#21374d'},title:{display:true,text:s.unit,color:'#9bb1c5'}}}}});
+}
+async function start(){
+ try{
+  const r=await fetch('../data.json?cache='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('No published data snapshot');
+  db=await r.json();const names=Object.entries(db.sources).filter(([,s])=>s.observations?.length);
+  if(!names.length)throw Error('No observations loaded');
+  const updated=new Date(db.updated_at).toLocaleString('en-AU',{timeZone:'UTC'});
+  $('status').textContent='Snapshot: '+updated+' UTC';
+  $('freshness').textContent='Last successful snapshot: '+updated+' UTC';
+  $('indicator').innerHTML=names.map(([k,s])=>`<option value="${safeText(k)}">${safeText(s.name)}</option>`).join('');
+  $('sources').innerHTML=names.map(([,s])=>`<li><a target="_blank" rel="noopener" href="${safeText(s.url)}">${safeText(s.id)}</a> · ${datefmt(s.observations.at(-1)[0])}</li>`).join('')+(Object.keys(db.errors||{}).length?'<li class="warning">Partial fetch failures: '+Object.keys(db.errors).map(safeText).join(', ')+'</li>':'');
+  cards();draw();
+ }catch(e){$('status').textContent='Data unavailable';$('freshness').textContent=e.message;$('cards').innerHTML='<div class="card">Unable to load the published data snapshot. Try again shortly.</div>'}
+}
+$('indicator').addEventListener('change',draw);$('window').addEventListener('change',draw);start();
+</script></body></html>
