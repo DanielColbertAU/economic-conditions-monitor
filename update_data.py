@@ -11,6 +11,9 @@ import urllib.request
 
 SERIES = {
     "aus_cli": ("AUSLOLITOAASTSAM", "Australia OECD leading indicator", "index"),
+    "aus_unemployment": ("LRHUTTTTAUM156S", "Australia unemployment rate (OECD)", "percent"),
+    "aus_employment": ("LFEMTTTTAUM647S", "Australia total employment (OECD)", "persons"),
+    "aud_usd": ("DEXUSAL", "AUD/USD exchange rate", "USD per AUD"),
     "us_curve": ("T10Y2Y", "US 10Y minus 2Y Treasury yield", "percentage points"),
     "us_unemployment": ("UNRATE", "US unemployment rate", "percent"),
     "us_credit": ("BAMLH0A0HYM2", "US high-yield option-adjusted spread", "percentage points"),
